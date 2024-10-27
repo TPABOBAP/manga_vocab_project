@@ -79,3 +79,20 @@ a:hover {
     z-index: 1000; /* Поверх других элементов */
 }
 
+/* Стили для индикатора */
+.word-status {
+    cursor: pointer;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 50%;
+    margin-left: 10px;
+    color: white;
+}
+
+.word-status.known {
+    background-color: #28a745; /* Зеленый цвет */
+}
+
+.word-status.unknown {
+    background-color: #dc3545; /* Красный цвет */
+}

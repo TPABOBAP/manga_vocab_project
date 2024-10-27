@@ -13,36 +13,39 @@
     <ul>
         {% for word in unique_words %}
             <li>
-                {{ word }} 
-                <form class="add-word-form" action="/add_known_word" method="post" style="display:inline;">
-                    <input type="hidden" name="word" value="{{ word }}">
-                    <button type="submit">Знаю это слово</button>
-                </form>
+                {{ word }}
+                <span class="word-status {% if word in known_words %}known{% else %}unknown{% endif %}" 
+                      data-word="{{ word }}">
+                      {% if word in known_words %}✓{% else %}✗{% endif %}
+                </span>
             </li>
         {% endfor %}
     </ul>
+    
 
-    <a href="/">Назад к списку манги</a>
+    <a href="/manga/{{ title }}/{{ chapter }}/options">Назад к выбору действий</a>
 
     <div id="notification"></div> <!-- Уведомление -->
-    
+
     <script>
         function showNotification(message) {
             $('#notification').text(message).fadeIn(500).delay(2000).fadeOut(500);
         }
-    
-        // Пример обработки добавления слова
-        $('form').on('submit', function(event) {
-            event.preventDefault(); // Предотвращаем отправку формы
-    
-            $.post('/add_known_word', $(this).serialize())
+
+        $('.word-status').on('click', function() {
+            const word = $(this).data('word');
+            const element = $(this);
+
+            $.post('/toggle_known_word', { word: word })
                 .done(function(response) {
-                    showNotification(response.message); // Отображаем сообщение
+                    element.toggleClass('known unknown');
+                    element.text(response.status ? '✓' : '✗');
+                    showNotification(response.message);
                 })
                 .fail(function(xhr) {
-                    showNotification(xhr.responseJSON.message); // Отображаем сообщение об ошибке
+                    showNotification("Произошла ошибка");
                 });
         });
-    </script>    
+    </script>
 </body>
 </html>

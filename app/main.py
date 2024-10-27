@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
 import sqlite3
 from manga_processor import extract_text_from_pdf, get_unique_words, translate_words
@@ -33,9 +33,12 @@ def upload_manga():
     if not os.path.exists(uploads_dir):
         os.makedirs(uploads_dir)
 
-    pdf_path = os.path.join(uploads_dir, file.filename)
+    # Генерация уникального имени файла на основе названия и номера главы
+    unique_filename = f"{title}_chapter_{chapter}_{file.filename}"
+    pdf_path = os.path.join(uploads_dir, unique_filename)
     file.save(pdf_path)
     
+    # Извлекаем текст и обрабатываем слова
     text = extract_text_from_pdf(pdf_path)
     unique_words = get_unique_words(text)
 
@@ -43,32 +46,26 @@ def upload_manga():
     cursor = conn.cursor()
     new_words = []
 
-    # Сначала собираем уникальные слова
+    # Добавление слов в таблицу vocabulary
     for word in unique_words:
         cursor.execute("SELECT translation FROM vocabulary WHERE word=?", (word,))
         result = cursor.fetchone()
         if result is None:
             new_words.append(word)
 
-    # Переводим новые слова
+    # Перевод и добавление новых слов
     translations = translate_words(new_words)
     for word, translation in translations.items():
         word_exists = cursor.execute("SELECT * FROM vocabulary WHERE word = ?", (word,)).fetchone()
         if not word_exists:
-            try:
-                cursor.execute("INSERT INTO vocabulary (word, translation) VALUES (?, ?)", (word, translation))
-                print(f"Added new word: {word} with translation: {translation}")
-            except sqlite3.IntegrityError:
-                print(f"Integrity error for word '{word}'. It might already exist.")
-        else:
-            print(f"The word '{word}' already exists in the vocabulary.")
+            cursor.execute("INSERT INTO vocabulary (word, translation) VALUES (?, ?)", (word, translation))
 
-    # Вставляем информацию о манге
-    cursor.execute("INSERT INTO manga (title, chapter, text) VALUES (?, ?, ?)", (title, chapter, text))
+    # Вставляем информацию о манге в таблицу, включая имя файла
+    cursor.execute("INSERT INTO manga (title, chapter, text, pdf_filename) VALUES (?, ?, ?, ?)", 
+                   (title, chapter, text, unique_filename))
     conn.commit()
     conn.close()
 
-    # Возвращаем HTML-страницу с сообщением
     return render_template('upload_success.html', title=title)
 
 
@@ -77,18 +74,22 @@ def view_manga_words(title, chapter):
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
     
-    # Получаем текст манги
+    # Получаем текст манги и уникальные слова
     cursor.execute("SELECT text FROM manga WHERE title=? AND chapter=?", (title, chapter))
     manga_text = cursor.fetchone()
-
+    
+    # Получаем уникальные слова и известные слова
     if manga_text:
         text = manga_text[0]
         unique_words = get_unique_words(text)
+        known_words = set(word[0] for word in cursor.execute("SELECT word FROM known_words").fetchall())
     else:
         unique_words = []
+        known_words = set()
 
     conn.close()
-    return render_template('manga_words.html', title=title, chapter=chapter, unique_words=unique_words)
+    return render_template('manga_words.html', title=title, chapter=chapter, unique_words=unique_words, known_words=known_words)
+
 
 
 @app.route('/add_known_word', methods=['POST'])
@@ -111,7 +112,75 @@ def add_known_word():
         return jsonify({"message": f"Слово '{word}' добавлено в словарь выученных слов."}), 200
 
 
+# Новый маршрут для выбора действий
+@app.route('/manga/<title>/<chapter>/options', methods=['GET'])
+def manga_options(title, chapter):
+    return render_template('manga_options.html', title=title, chapter=chapter)
 
+
+@app.route('/toggle_known_word', methods=['POST'])
+def toggle_known_word():
+    word = request.form['word']
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    # Проверяем статус слова
+    cursor.execute("SELECT * FROM known_words WHERE word = ?", (word,))
+    existing_word = cursor.fetchone()
+
+    if existing_word:
+        # Удаляем слово из известных
+        cursor.execute("DELETE FROM known_words WHERE word = ?", (word,))
+        conn.commit()
+        status = False
+        message = f"Слово '{word}' удалено из словаря."
+    else:
+        # Добавляем слово в известные
+        cursor.execute("INSERT INTO known_words (word) VALUES (?)", (word,))
+        conn.commit()
+        status = True
+        message = f"Слово '{word}' добавлено в словарь выученных слов."
+
+    conn.close()
+    return jsonify({"status": status, "message": message})
+
+
+# Маршрут для скачивания PDF
+@app.route('/download/<int:manga_id>', methods=['GET'])
+def download_pdf(manga_id):
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    # Получаем pdf_filename из базы данных по идентификатору манги
+    cursor.execute("SELECT pdf_filename FROM manga WHERE id=?", (manga_id,))
+    pdf_filename = cursor.fetchone()
+    
+    if pdf_filename is None:
+        return "File not found", 404
+
+    return send_from_directory(directory='uploads', path=pdf_filename[0], as_attachment=True)
+    
+
+@app.route('/manga/<title>/<chapter>/unknown_words', methods=['GET'])
+def view_unknown_words(title, chapter):
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    # Получаем текст манги
+    cursor.execute("SELECT text FROM manga WHERE title=? AND chapter=?", (title, chapter))
+    manga_text = cursor.fetchone()
+
+    # Получаем только неизвестные слова
+    if manga_text:
+        text = manga_text[0]
+        unique_words = get_unique_words(text)
+        known_words = set(word[0] for word in cursor.execute("SELECT word FROM known_words").fetchall())
+        unknown_words = [word for word in unique_words if word not in known_words]
+    else:
+        unknown_words = []
+
+    conn.close()
+    return render_template('unknown_words.html', title=title, chapter=chapter, unknown_words=unknown_words)
 
 
 if __name__ == "__main__":

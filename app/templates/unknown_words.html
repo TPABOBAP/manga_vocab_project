@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }} - Глава {{ chapter }}: Неизвестные слова</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>{{ title }} - Глава {{ chapter }}</h1>
+    <h2>Неизвестные слова:</h2>
+    <ul>
+        {% for word in unknown_words %}
+            <li>
+                {{ word }}
+                <span class="word-status unknown" data-word="{{ word }}">✗</span>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <a href="/manga/{{ title }}/{{ chapter }}/options">Назад к выбору действий</a>
+</body>
+</html>
