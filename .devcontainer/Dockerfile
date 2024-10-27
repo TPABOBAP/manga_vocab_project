@@ -5,7 +5,7 @@ FROM python:3.9-slim
 RUN apt-get update && \
     apt-get install -y tesseract-ocr libgl1 && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*  # Удаляем кэш, чтобы уменьшить размер образа
+    rm -rf /var/lib/apt/lists/*
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
@@ -17,18 +17,15 @@ COPY app/requirements.txt /app/
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-
+# Скачиваем необходимые данные NLTK
 RUN python -m nltk.downloader punkt stopwords
 RUN python -m nltk.downloader punkt punkt_tab stopwords
 
-
+# Копируем остальной код приложения
 COPY app /app
-
-# Запускаем инициализацию базы данных
-RUN python db_setup.py
 
 # Указываем порт для приложения
 EXPOSE 80
 
-# Указываем команду для запуска приложения
-CMD ["python", "main.py"]
+# Запускаем приложение Flask
+CMD ["flask", "--app", "main.py", "--debug", "run", "--host=0.0.0.0", "--port=80"]

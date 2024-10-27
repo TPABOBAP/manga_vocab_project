@@ -4,10 +4,10 @@ services:
   manga_vocab_app:
     build:
       context: .  # Указывает на текущую директорию, где находится docker-compose.yml
-      dockerfile: .devcontainer/Dockerfile # Указывает на путь к вашему Dockerfile
+      dockerfile: .devcontainer/Dockerfile  # Указывает на путь к вашему Dockerfile
     container_name: manga_vocab_app
     ports:
-      - "80:80"
+      - "80:80"  # Перенаправляем порт
     volumes:
       - ./app:/app
     environment:
