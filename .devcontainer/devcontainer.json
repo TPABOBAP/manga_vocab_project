@@ -1,0 +1,20 @@
+{
+    "name": "Manga Vocabulary",  // Имя вашего контейнера
+    "dockerComposeFile": [
+        "../docker-compose.yml"  // Указывает на ваш файл docker-compose.yml
+    ],
+    "service": "manga_vocab_app",  // Имя сервиса, указанное в docker-compose.yml
+    "workspaceFolder": "/app",  // Папка рабочего пространства внутри контейнера
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",  // Расширение для Python
+                "ms-toolsai.jupyter",  // Расширение для работы с Jupyter
+                "batisteo.vscode-django",  // Расширение для Django (если нужно)
+                "streetsidesoftware.code-spell-checker"  // Проверка орфографии
+                // Добавьте другие расширения, которые вам нужны
+            ]
+        }
+    },
+    "remoteUser": "root"  // Имя пользователя, под которым запускается контейнер
+}
