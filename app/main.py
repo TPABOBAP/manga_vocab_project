@@ -68,7 +68,9 @@ def upload_manga():
     conn.commit()
     conn.close()
 
-    return jsonify({"message": "Манга загружена и обработана."})
+    # Возвращаем HTML-страницу с сообщением
+    return render_template('upload_success.html', title=title)
+
 
 @app.route('/manga/<title>/<chapter>', methods=['GET'])
 def view_manga_words(title, chapter):
@@ -88,18 +90,27 @@ def view_manga_words(title, chapter):
     conn.close()
     return render_template('manga_words.html', title=title, chapter=chapter, unique_words=unique_words)
 
+
 @app.route('/add_known_word', methods=['POST'])
 def add_known_word():
     word = request.form['word']
-    conn = sqlite3.connect(DATABASE)
+    conn = sqlite3.connect(DATABASE)  # Замените на ваше имя базы данных
     cursor = conn.cursor()
 
-    # Здесь вы можете сохранить информацию о знакомых словах
-    cursor.execute("INSERT INTO known_words (word) VALUES (?)", (word,))
-    conn.commit()
-    conn.close()
+    # Проверяем, существует ли слово в базе данных
+    cursor.execute("SELECT * FROM known_words WHERE word = ?", (word,))
+    existing_word = cursor.fetchone()
 
-    return jsonify({"message": f"Слово '{word}' добавлено в знакомые слова."})
+    if existing_word:
+        # Если слово уже существует, возвращаем ошибку
+        return jsonify({"message": f"Слово '{word}' уже было добавлено в словарь."}), 400
+    else:
+        # Если слово не существует, добавляем его
+        cursor.execute("INSERT INTO known_words (word) VALUES (?)", (word,))
+        conn.commit()
+        return jsonify({"message": f"Слово '{word}' добавлено в словарь выученных слов."}), 200
+
+
 
 
 

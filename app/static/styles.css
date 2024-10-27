@@ -15,3 +15,18 @@ form {
     display: inline;
     margin-left: 10px;
 }
+/* styles.css */
+
+#notification {
+    display: none; /* Скрыто по умолчанию */
+    position: fixed;
+    bottom: 20px; /* Отступ от низа страницы */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8); /* Полупрозрачный черный фон */
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    z-index: 1000; /* Поверх других элементов */
+}
+
