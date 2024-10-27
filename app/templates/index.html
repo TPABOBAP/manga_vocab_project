@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Manga Vocabulary</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Manga Vocabulary</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <label for="title">Название манги:</label>
+        <input type="text" id="title" name="title" required>
+        <label for="chapter">Глава:</label>
+        <input type="number" id="chapter" name="chapter" required>
+        <label for="file">Файл PDF:</label>
+        <input type="file" id="file" name="file" accept="application/pdf" required>
+        <button type="submit">Загрузить</button>
+    </form>
+
+    <h2>Список загруженной манги:</h2>
+    <ul>
+        {% for manga in manga_list %}
+            <li>
+                <a href="/manga/{{ manga[0] }}/{{ manga[1] }}">{{ manga[0] }} - Глава {{ manga[1] }}</a>
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
