@@ -33,6 +33,7 @@
 
             $.post('/toggle_known_word', { word: word })
                 .done(function(response) {
+                    // Переключаем класс и текст в зависимости от статуса
                     element.toggleClass('known unknown');
                     element.text(response.status ? '✓' : '✗');
                     showNotification(response.message);

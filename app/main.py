@@ -145,20 +145,25 @@ def toggle_known_word():
     return jsonify({"status": status, "message": message})
 
 
-# Маршрут для скачивания PDF
-@app.route('/download/<int:manga_id>', methods=['GET'])
-def download_pdf(manga_id):
+@app.route('/download/<string:manga_title>/<int:chapter_number>', methods=['GET'])
+def download_pdf(manga_title, chapter_number):
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
-    # Получаем pdf_filename из базы данных по идентификатору манги
-    cursor.execute("SELECT pdf_filename FROM manga WHERE id=?", (manga_id,))
+    # Получаем pdf_filename из базы данных по названию манги и номеру главы
+    cursor.execute("SELECT pdf_filename FROM manga WHERE title=? AND chapter=?", (manga_title, chapter_number))
     pdf_filename = cursor.fetchone()
-    
+
     if pdf_filename is None:
         return "File not found", 404
 
-    return send_from_directory(directory='uploads', filename=pdf_filename[0], as_attachment=True)
+    # Проверяем, существует ли файл
+    pdf_path = os.path.join('uploads', pdf_filename[0])
+    if not os.path.exists(pdf_path):
+        return "File not found", 404
+
+    return send_from_directory(directory='uploads', path=pdf_filename[0], as_attachment=True)
+
     
 
 @app.route('/manga/<title>/<chapter>/unknown_words', methods=['GET'])
