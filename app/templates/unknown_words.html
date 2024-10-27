@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>{{ title }} - Глава {{ chapter }}: Неизвестные слова</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
     <h1>{{ title }} - Глава {{ chapter }}</h1>
@@ -18,5 +19,28 @@
     </ul>
 
     <a href="/manga/{{ title }}/{{ chapter }}/options">Назад к выбору действий</a>
+
+    <div id="notification"></div> <!-- Уведомление -->
+
+    <script>
+        function showNotification(message) {
+            $('#notification').text(message).fadeIn(500).delay(2000).fadeOut(500);
+        }
+
+        $('.word-status').on('click', function() {
+            const word = $(this).data('word');
+            const element = $(this);
+
+            $.post('/toggle_known_word', { word: word })
+                .done(function(response) {
+                    element.toggleClass('known unknown');
+                    element.text(response.status ? '✓' : '✗');
+                    showNotification(response.message);
+                })
+                .fail(function(xhr) {
+                    showNotification("Произошла ошибка");
+                });
+        });
+    </script>
 </body>
 </html>

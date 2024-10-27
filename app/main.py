@@ -158,7 +158,7 @@ def download_pdf(manga_id):
     if pdf_filename is None:
         return "File not found", 404
 
-    return send_from_directory(directory='uploads', path=pdf_filename[0], as_attachment=True)
+    return send_from_directory(directory='uploads', filename=pdf_filename[0], as_attachment=True)
     
 
 @app.route('/manga/<title>/<chapter>/unknown_words', methods=['GET'])
