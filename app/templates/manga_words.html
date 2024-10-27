@@ -30,20 +30,19 @@
         function showNotification(message) {
             $('#notification').text(message).fadeIn(500).delay(2000).fadeOut(500);
         }
-
-        // Обработка отправки форм с известными словами
-        $('.add-word-form').on('submit', function(event) {
-            event.preventDefault(); // Предотвращаем стандартную отправку формы
-
-            var form = $(this);
-            $.post(form.attr('action'), form.serialize())
+    
+        // Пример обработки добавления слова
+        $('form').on('submit', function(event) {
+            event.preventDefault(); // Предотвращаем отправку формы
+    
+            $.post('/add_known_word', $(this).serialize())
                 .done(function(response) {
-                    showNotification("Слово добавлено в словарь выученных слов");
+                    showNotification(response.message); // Отображаем сообщение
                 })
-                .fail(function() {
-                    showNotification("Произошла ошибка при добавлении слова");
+                .fail(function(xhr) {
+                    showNotification(xhr.responseJSON.message); // Отображаем сообщение об ошибке
                 });
         });
-    </script>
+    </script>    
 </body>
 </html>
