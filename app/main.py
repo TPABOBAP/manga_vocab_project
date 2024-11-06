@@ -3,8 +3,13 @@ import os
 import sqlite3
 from manga_processor import extract_text_from_pdf, get_unique_words, translate_words
 from db_setup import init_db  # Импортируйте функцию инициализации
+import nltk
+from nltk.corpus import brown
 import argostranslate.package
 import argostranslate.translate
+
+nltk.download('brown')
+nltk.download('wordnet')
 
 # Инициализируйте список пакетов при старте приложения
 argostranslate.package.update_package_index()
@@ -25,10 +30,20 @@ def query_db(query, args=(), one=False):
     con.close()
     return (rv[0] if rv else None) if one else rv
 
+def get_example_sentence(word):
+    # Используем корпус Brown из NLTK для поиска предложений с данным словом
+    sentences = nltk.corpus.brown.sents()
+    for sentence in sentences:
+        if word in sentence:
+            return ' '.join(sentence)
+    # Если слово не найдено в корпусе, возвращаем пример
+    return f"This is an example sentence with the word {word}."
+
 @app.route('/')
 def index():
     manga_list = query_db("SELECT title, chapter FROM manga")
     return render_template('index.html', manga_list=manga_list)
+
 
 @app.route('/translate_word', methods=['POST'])
 def translate_word():
@@ -37,6 +52,32 @@ def translate_word():
         translated_text = argostranslate.translate.translate(word, "en", "ru")
         return jsonify({"translation": translated_text})
     return jsonify({"error": "Не удалось перевести слово"}), 400
+
+
+@app.route('/get_example/<word>', methods=['GET'])
+def get_example(word):
+    example_sentences = []
+    
+    # Ищем примеры с этим словом в корпусе
+    sentences = nltk.corpus.brown.sents()
+    for sentence in sentences:
+        if word in sentence:
+            example_sentences.append(' '.join(sentence))
+        if len(example_sentences) >= 3:  # Ограничиваем количество примеров
+            break
+
+    # Переводим все примеры
+    translated_examples = [argostranslate.translate.translate(example, "en", "ru") for example in example_sentences]
+
+    # Формируем ответ
+    examples = [{'example': example, 'translated': translated_example} for example, translated_example in zip(example_sentences, translated_examples)]
+
+    return jsonify({
+        'examples': examples,
+        'translated': argostranslate.translate.translate(word, "en", "ru")  # Перевод самого слова
+    })
+
+
 
 @app.route('/upload', methods=['POST'])
 def upload_manga():
