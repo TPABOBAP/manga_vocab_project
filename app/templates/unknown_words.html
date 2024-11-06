@@ -5,46 +5,6 @@
     <title>{{ title }} - Глава {{ chapter }}: Неизвестные слова</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        /* Стили для модального окна */
-        #exampleModal {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: white;
-            padding: 20px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-            width: 80%;
-            max-width: 600px;
-        }
-
-        #exampleModal .header {
-            font-size: 1.5em;
-            margin-bottom: 10px;
-        }
-
-        #exampleModal .content {
-            margin-top: 20px;
-            font-size: 1.1em;
-        }
-
-        #exampleModal .navigation {
-            margin-top: 20px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .close {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            font-size: 1.5em;
-            cursor: pointer;
-        }
-    </style>
 </head>
 <body>
     <h1>{{ title }} - Глава {{ chapter }}</h1>
@@ -54,10 +14,12 @@
             <li>
                 <span class="word" data-word="{{ word }}">{{ word }}</span>
                 <span class="translation"></span> <!-- Поле для отображения перевода -->
+                <span class="word-status unknown" data-word="{{ word }}">✗</span> <!-- Статус выученности -->
             </li>
         {% endfor %}
     </ul>
 
+    <button id="translate-all">Перевести все слова</button> <!-- Кнопка перевода всех слов -->
     <a href="/manga/{{ title }}/{{ chapter }}/options">Назад к выбору действий</a>
 
     <!-- Модальное окно -->
@@ -173,6 +135,44 @@
                 error: function() {
                     alert("Не удалось получить перевод");
                 }
+            });
+        });
+
+        // Действия при клике на статус выученности
+        $('.word-status').on('click', function() {
+            const word = $(this).data('word');
+            const element = $(this);
+
+            // Запрос на сервер для изменения статуса слова
+            $.post('/toggle_known_word', { word: word })
+                .done(function(response) {
+                    // Изменяем класс и символ в зависимости от нового статуса
+                    element.toggleClass('known unknown');
+                    element.text(response.status ? '✓' : '✗');
+                })
+                .fail(function() {
+                    alert("Не удалось обновить статус слова");
+                });
+        });
+
+        // Перевод всех слов
+        $('#translate-all').on('click', function() {
+            $('.word').each(function() {
+                const word = $(this).data('word');
+                const element = $(this);
+
+                $.ajax({
+                    url: '/translate_word',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ word: word }),
+                    success: function(response) {
+                        showTranslation(element, response.translation);
+                    },
+                    error: function() {
+                        alert("Не удалось получить перевод для некоторых слов");
+                    }
+                });
             });
         });
     </script>
