@@ -8,12 +8,12 @@
 </head>
 <body>
     <h1>{{ title }} - Глава {{ chapter }}</h1>
-
     <h2>Уникальные слова:</h2>
     <ul>
         {% for word in unique_words %}
             <li>
-                {{ word }}
+                <span class="word" data-word="{{ word }}">{{ word }}</span>
+                <span class="translation"></span> <!-- Поле для отображения перевода -->
                 <span class="word-status {% if word in known_words %}known{% else %}unknown{% endif %}" 
                       data-word="{{ word }}">
                       {% if word in known_words %}✓{% else %}✗{% endif %}
@@ -21,10 +21,10 @@
             </li>
         {% endfor %}
     </ul>
-    
 
     <a href="/manga/{{ title }}/{{ chapter }}/options">Назад к выбору действий</a>
-
+    <button id="translate-all">Перевести все слова</button> <!-- Кнопка перевода всех слов -->
+    
     <div id="notification"></div> <!-- Уведомление -->
 
     <script>
@@ -32,6 +32,52 @@
             $('#notification').text(message).fadeIn(500).delay(2000).fadeOut(500);
         }
 
+        // Функция для отображения перевода
+        function showTranslation(element, translation) {
+            element.next('.translation').text(` - ${translation}`).fadeIn();
+        }
+
+        // Перевод отдельного слова при нажатии на него
+        $('.word').on('click', function() {
+            const word = $(this).data('word');
+            const element = $(this);
+
+            $.ajax({
+                url: '/translate_word',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ word: word }),
+                success: function(response) {
+                    showTranslation(element, response.translation);
+                },
+                error: function() {
+                    showNotification("Не удалось получить перевод");
+                }
+            });
+        });
+
+        // Перевод всех слов
+        $('#translate-all').on('click', function() {
+            $('.word').each(function() {
+                const word = $(this).data('word');
+                const element = $(this);
+
+                $.ajax({
+                    url: '/translate_word',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ word: word }),
+                    success: function(response) {
+                        showTranslation(element, response.translation);
+                    },
+                    error: function() {
+                        showNotification("Не удалось получить перевод для некоторых слов");
+                    }
+                });
+            });
+        });
+
+        // Обработка статуса слова как выученное/невыученное
         $('.word-status').on('click', function() {
             const word = $(this).data('word');
             const element = $(this);
@@ -42,8 +88,8 @@
                     element.text(response.status ? '✓' : '✗');
                     showNotification(response.message);
                 })
-                .fail(function(xhr) {
-                    showNotification("Произошла ошибка");
+                .fail(function() {
+                    showNotification("Произошла ошибка при изменении статуса слова");
                 });
         });
     </script>

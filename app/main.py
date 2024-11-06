@@ -3,6 +3,14 @@ import os
 import sqlite3
 from manga_processor import extract_text_from_pdf, get_unique_words, translate_words
 from db_setup import init_db  # Импортируйте функцию инициализации
+import argostranslate.package
+import argostranslate.translate
+
+# Инициализируйте список пакетов при старте приложения
+argostranslate.package.update_package_index()
+available_packages = argostranslate.package.get_available_packages()
+package_to_install = next(filter(lambda x: x.from_code == "en" and x.to_code == "ru", available_packages))
+argostranslate.package.install_from_path(package_to_install.download())
 
 app = Flask(__name__)
 DATABASE = 'manga_vocab.db'
@@ -21,6 +29,14 @@ def query_db(query, args=(), one=False):
 def index():
     manga_list = query_db("SELECT title, chapter FROM manga")
     return render_template('index.html', manga_list=manga_list)
+
+@app.route('/translate_word', methods=['POST'])
+def translate_word():
+    word = request.json.get('word')  # Получаем слово из запроса
+    if word:
+        translated_text = argostranslate.translate.translate(word, "en", "ru")
+        return jsonify({"translation": translated_text})
+    return jsonify({"error": "Не удалось перевести слово"}), 400
 
 @app.route('/upload', methods=['POST'])
 def upload_manga():
