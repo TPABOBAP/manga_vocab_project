@@ -8,3 +8,4 @@ PyMuPDF
 nltk
 googletrans==4.0.0-rc1
 argostranslate
+pip install httpx>=0.23.0
