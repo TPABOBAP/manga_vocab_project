@@ -9,10 +9,12 @@ This project allows you to upload a PDF of a manga chapter, extract words, trans
 ```bash
 !git clone https://github.com/TPABOBAP/manga_vocab_project
 !pip install -r /content/manga_vocab_project/app/requirements.txt
+!apt-get update
+!apt-get install -y tesseract-ocr
 from google.colab.output import eval_js
 url = eval_js("google.colab.kernel.proxyPort(5000)")
 print('Open the link to use your web interface! -> ', url)
-!python /content/manga_vocab_project/app/main.py
+!python /content/manga_vocab_project/app/main.py --use-deprecated=legacy-resolver
 ```
 
 2. **Open the Web Interface**  
