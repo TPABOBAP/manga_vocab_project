@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }} - Глава {{ chapter }}: Неизвестные слова</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>{{ title }} - Глава {{ chapter }}</h1>
+    <h2>Неизвестные слова:</h2>
+    <ul>
+        {% for word in unknown_words %}
+            <li>
+                <span class="word" data-word="{{ word }}">{{ word }}</span>
+                <span class="translation"></span> <!-- Поле для отображения перевода -->
+                <span class="word-status unknown" data-word="{{ word }}">✗</span> <!-- Статус выученности -->
+            </li>
+        {% endfor %}
+    </ul>
+
+    <button id="translate-all">Перевести все слова</button> <!-- Кнопка перевода всех слов -->
+    <a href="/manga/{{ title }}/{{ chapter }}/options">Назад к выбору действий</a>
+
+    <!-- Модальное окно -->
+    <div id="exampleModal">
+        <span class="close">&times;</span>
+        <div class="header">
+            <span id="modalWord"></span> - <span id="modalTranslation"></span>
+        </div>
+        <div class="content">
+            <p id="modalExample"></p>
+            <p id="modalTranslatedExample"></p>
+        </div>
+        <div class="navigation">
+            <button id="prevExample">← Предыдущий</button>
+            <button id="nextExample">Следующий →</button>
+        </div>
+    </div>
+
+    <script>
+        let currentExampleIndex = 0;  // Индекс текущего примера
+        let wordExamples = [];  // Массив примеров для слова
+
+        // Функция для отображения перевода
+        function showTranslation(element, translation) {
+            element.next('.translation').text(` - ${translation}`).fadeIn();
+        }
+
+        // Функция для отображения примера и перевода
+        function showExampleModal(word, translation, examples) {
+            wordExamples = examples;  // Сохраняем все примеры для текущего слова
+            currentExampleIndex = 0;  // Сбрасываем индекс
+
+            // Устанавливаем первое значение в модальном окне
+            $('#modalWord').text(word);
+            $('#modalTranslation').text(translation);
+            updateExample();
+
+            // Показываем модальное окно
+            $('#exampleModal').fadeIn();
+        }
+
+        // Функция для обновления примера
+        function updateExample() {
+            const example = wordExamples[currentExampleIndex];
+            $('#modalExample').text(example.example);
+            $('#modalTranslatedExample').text(example.translated);
+        }
+
+        // Функция для обработки закрытия модального окна
+        function closeModal() {
+            $('#exampleModal').fadeOut();
+        }
+
+        // Функция для перехода к следующему примеру
+        $('#nextExample').click(function() {
+            if (currentExampleIndex < wordExamples.length - 1) {
+                currentExampleIndex++;
+                updateExample();
+            }
+        });
+
+        // Функция для перехода к предыдущему примеру
+        $('#prevExample').click(function() {
+            if (currentExampleIndex > 0) {
+                currentExampleIndex--;
+                updateExample();
+            }
+        });
+
+        // Закрытие модального окна при клике на крестик
+        $('.close').click(closeModal);
+
+        // Закрытие модального окна при клике вне его
+        $(window).click(function(event) {
+            if ($(event.target).is('#exampleModal')) {
+                closeModal();
+            }
+        });
+
+        // Действия при двойном клике на слово
+        $('.word').on('dblclick', function() {
+            const word = $(this).data('word');
+            const element = $(this);
+
+            // Запрос на сервер для получения примера и перевода
+            $.ajax({
+                url: `/get_example/${word}`,
+                type: 'GET',
+                success: function(response) {
+                    // Отправляем слово, его перевод и примеры
+                    showExampleModal(word, response.translated, response.examples);
+                },
+                error: function() {
+                    alert("Не удалось получить перевод и примеры");
+                }
+            });
+        });
+
+        // Запрос на перевод слова по клику
+        $('.word').on('click', function() {
+            const word = $(this).data('word');
+            const element = $(this);
+
+            // Запрос на сервер для получения перевода
+            $.ajax({
+                url: '/translate_word',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ word: word }),
+                success: function(response) {
+                    showTranslation(element, response.translation);
+                },
+                error: function() {
+                    alert("Не удалось получить перевод");
+                }
+            });
+        });
+
+        // Действия при клике на статус выученности
+        $('.word-status').on('click', function() {
+            const word = $(this).data('word');
+            const element = $(this);
+
+            // Запрос на сервер для изменения статуса слова
+            $.post('/toggle_known_word', { word: word })
+                .done(function(response) {
+                    // Изменяем класс и символ в зависимости от нового статуса
+                    element.toggleClass('known unknown');
+                    element.text(response.status ? '✓' : '✗');
+                })
+                .fail(function() {
+                    alert("Не удалось обновить статус слова");
+                });
+        });
+
+        // Перевод всех слов
+        $('#translate-all').on('click', function() {
+            $('.word').each(function() {
+                const word = $(this).data('word');
+                const element = $(this);
+
+                $.ajax({
+                    url: '/translate_word',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ word: word }),
+                    success: function(response) {
+                        showTranslation(element, response.translation);
+                    },
+                    error: function() {
+                        alert("Не удалось получить перевод для некоторых слов");
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

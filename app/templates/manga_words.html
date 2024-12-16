@@ -8,41 +8,179 @@
 </head>
 <body>
     <h1>{{ title }} - Глава {{ chapter }}</h1>
-
     <h2>Уникальные слова:</h2>
     <ul>
         {% for word in unique_words %}
             <li>
-                {{ word }} 
-                <form class="add-word-form" action="/add_known_word" method="post" style="display:inline;">
-                    <input type="hidden" name="word" value="{{ word }}">
-                    <button type="submit">Знаю это слово</button>
-                </form>
+                <span class="word" data-word="{{ word }}">{{ word }}</span>
+                <span class="translation"></span> <!-- Поле для отображения перевода -->
+                <span class="word-status {% if word in known_words %}known{% else %}unknown{% endif %}" 
+                      data-word="{{ word }}">{% if word in known_words %}✓{% else %}✗{% endif %}</span> <!-- Статус выученности -->
             </li>
         {% endfor %}
     </ul>
 
-    <a href="/">Назад к списку манги</a>
-
-    <div id="notification"></div> <!-- Уведомление -->
+    <a href="/manga/{{ title }}/{{ chapter }}/options">Назад к выбору действий</a>
+    <button id="translate-all">Перевести все слова</button> <!-- Кнопка перевода всех слов -->
     
+    <div id="notification"></div> <!-- Уведомление -->
+
+    <!-- Модальное окно -->
+    <div id="exampleModal">
+        <span class="close">&times;</span>
+        <div class="header">
+            <span id="modalWord"></span> - <span id="modalTranslation"></span>
+        </div>
+        <div class="content">
+            <p id="modalExample">Загружается...</p> <!-- Изначально показывается сообщение о загрузке -->
+            <p id="modalTranslatedExample"></p>
+        </div>
+        <div class="navigation">
+            <button id="prevExample">← Предыдущий</button>
+            <button id="nextExample">Следующий →</button>
+        </div>
+    </div>
+
     <script>
+        let currentExampleIndex = 0;  // Индекс текущего примера
+        let wordExamples = [];  // Массив примеров для слова
+
+        // Функция для отображения перевода
+        function showTranslation(element, translation) {
+            // Показать перевод или скрыть его в зависимости от текущего состояния
+            const translationElement = element.next('.translation');
+            if (translationElement.is(':visible')) {
+                translationElement.fadeOut();  // Скрыть перевод, если он уже отображен
+            } else {
+                translationElement.text(` - ${translation}`).fadeIn();  // Показать перевод
+            }
+        }
+
+        // Функция для отображения примера и перевода
+        function showExampleModal(word, translation, examples) {
+            wordExamples = examples;  // Сохраняем все примеры для текущего слова
+            wordExamples.sort((a, b) => a.example.split(' ').length - b.example.split(' ').length);  // Сортируем примеры по количеству слов
+            currentExampleIndex = 0;  // Сбрасываем индекс
+
+            // Устанавливаем первое значение в модальном окне
+            $('#modalWord').text(word);
+            $('#modalTranslation').text(translation);
+            updateExample();
+
+            // Показываем модальное окно
+            $('#exampleModal').fadeIn();
+        }
+
+        // Функция для обновления примера
+        function updateExample() {
+            const example = wordExamples[currentExampleIndex];
+            $('#modalExample').text(example.example);
+            $('#modalTranslatedExample').text(example.translated);
+        }
+
+        // Закрытие модального окна
+        $('.close').click(function() {
+            $('#exampleModal').fadeOut();
+        });
+
+        // Переход к следующему примеру
+        $('#nextExample').click(function() {
+            if (currentExampleIndex < wordExamples.length - 1) {
+                currentExampleIndex++;
+                updateExample();
+            }
+        });
+
+        // Переход к предыдущему примеру
+        $('#prevExample').click(function() {
+            if (currentExampleIndex > 0) {
+                currentExampleIndex--;
+                updateExample();
+            }
+        });
+
+        // Действия при клике на слово (отображение перевода)
+        $('.word').on('click', function() {
+            const word = $(this).data('word');
+            const element = $(this);
+
+            // Запрос на сервер для получения перевода
+            $.ajax({
+                url: '/translate_word',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ word: word }),
+                success: function(response) {
+                    showTranslation(element, response.translation);  // Отображаем перевод
+                },
+                error: function() {
+                    showNotification("Не удалось получить перевод");
+                }
+            });
+        });
+
+        // Действия при двойном клике на слово (открытие модального окна с примерами)
+        $('.word').on('dblclick', function() {
+            const word = $(this).data('word');
+            const element = $(this);
+
+            // Покажем сообщение о загрузке
+            $('#modalExample').text("Загружается...");
+
+            // Запрос на сервер для получения примера и перевода
+            $.ajax({
+                url: `/get_example/${word}`,
+                type: 'GET',
+                success: function(response) {
+                    showExampleModal(word, response.translated, response.examples);
+                },
+                error: function() {
+                    showNotification("Не удалось получить примеры и перевод");
+                }
+            });
+        });
+
+        // Перевод всех слов
+        $('#translate-all').on('click', function() {
+            $('.word').each(function() {
+                const word = $(this).data('word');
+                const element = $(this);
+
+                $.ajax({
+                    url: '/translate_word',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ word: word }),
+                    success: function(response) {
+                        showTranslation(element, response.translation);
+                    },
+                    error: function() {
+                        showNotification("Не удалось получить перевод для некоторых слов");
+                    }
+                });
+            });
+        });
+
+        // Обработка статуса слова как выученное/невыученное
+        $('.word-status').on('click', function() {
+            const word = $(this).data('word');
+            const element = $(this);
+
+            $.post('/toggle_known_word', { word: word })
+                .done(function(response) {
+                    element.toggleClass('known unknown');
+                    element.text(response.status ? '✓' : '✗');
+                    showNotification(response.message);
+                })
+                .fail(function() {
+                    showNotification("Произошла ошибка при изменении статуса слова");
+                });
+        });
+
+        // Функция для отображения уведомлений
         function showNotification(message) {
             $('#notification').text(message).fadeIn(500).delay(2000).fadeOut(500);
         }
-    
-        // Пример обработки добавления слова
-        $('form').on('submit', function(event) {
-            event.preventDefault(); // Предотвращаем отправку формы
-    
-            $.post('/add_known_word', $(this).serialize())
-                .done(function(response) {
-                    showNotification(response.message); // Отображаем сообщение
-                })
-                .fail(function(xhr) {
-                    showNotification(xhr.responseJSON.message); // Отображаем сообщение об ошибке
-                });
-        });
-    </script>    
+    </script>
 </body>
 </html>
