@@ -7,5 +7,5 @@ Pillow==11.0.0
 PyMuPDF==1.25.1
 nltk==3.9.1
 argostranslate==1.9.6
-httpx==0.24.0
-googletrans==4.0.0
+httpx==0.13.3
+googletrans==4.0.0-rc1
