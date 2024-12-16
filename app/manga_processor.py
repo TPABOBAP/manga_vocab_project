@@ -3,7 +3,6 @@ import pytesseract
 from PIL import Image
 import nltk
 from nltk.corpus import stopwords
-from googletrans import Translator
 
 nltk.download("stopwords")
 stop_words = set(stopwords.words("english"))
