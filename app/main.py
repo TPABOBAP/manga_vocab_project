@@ -10,6 +10,8 @@ import argostranslate.translate
 
 nltk.download('brown')
 nltk.download('wordnet')
+nltk.download('punkt')
+nltk.download('punkt_tab')
 
 # Инициализируйте список пакетов при старте приложения
 argostranslate.package.update_package_index()
